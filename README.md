@@ -27,7 +27,9 @@ This sample shows you how to use the Microsoft Azure DocumentDB service to store
     
     config.authKey = "~your auth key here~";
 
-5. Run **node app.js** in a terminal to start your start your node application.
+5. Run **npm install** in a terminal to install required npm modules
+ 
+6. Run **node app.js** in a terminal to start your start your node application.
 
 ## About the code
 The code included in this sample is intended to get you quickly started with a Node.js console application that connects to Azure DocumentDB.
