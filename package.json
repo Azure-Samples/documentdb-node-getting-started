@@ -4,6 +4,6 @@
   "description": "A short sample app to demonstrate how to get started with node.js and DocumentDB",
   "main": "app.js",
   "dependencies": {
-    "documentdb": "^1.5.5"
+    "documentdb": "^1.6.0"
   }
 }

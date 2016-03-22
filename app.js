@@ -1,139 +1,140 @@
+﻿"use strict";
+
 var documentClient = require("documentdb").DocumentClient;
 var config = require("./config");
+var url = require('url');
+var HttpStatusCodes = { NOTFOUND: 404 };
 
-var client = new documentClient(config.endpoint, {"masterKey": config.authKey});
+var client = new documentClient(config.endpoint, { "masterKey": config.authKey });
+var databaseUrl = `dbs/${config.database.id}`;
+var collectionUrl = `${databaseUrl}/colls/${config.collection.id}`;
 
-var getOrCreateDatabase = function(callback) {
-    var querySpec = {
-        query: 'SELECT * FROM root r WHERE r.id=@id',
-        parameters: [{
-            name: '@id',
-            value: config.dbDefinition.id
-        }]
-    };
+/**
+ * Get the database by ID, or create if it doesn't exist.
+ * @param {string} database - The database to get or create
+ */
+function getDatabase() {
+    console.log(`Getting database:\n${config.database.id}\n`);
 
-    client.queryDatabases(querySpec).toArray(function(err, results) {
-        if(err) return callback(err);
-
-        if (results.length === 0) {
-            client.createDatabase(config.dbDefinition, function(err, created) {
-                if(err) return callback(err);
-
-                callback(null, created);
-            });
-        }
-        else {
-            callback(null, results[0]);
-        }
-    });
-};
-
-var getOrCreateCollection = function(callback) {
-
-    var querySpec = {
-        query: 'SELECT * FROM root r WHERE r.id=@id',
-        parameters: [{
-            name: '@id',
-            value: config.collDefinition.id
-        }]
-    };
-
-    var dbUri = "dbs/" + config.dbDefinition.id;
-
-    client.queryCollections(dbUri, querySpec).toArray(function(err, results) {
-        if(err) return callback(err);
-
-        if (results.length === 0) {
-            client.createCollection(dbUri, config.collDefinition, function(err, created) {
-                if(err) return callback(err);
-                callback(null, created);
-            });
-        }
-        else {
-            callback(null, results[0]);
-        }
-    });
-};
-
-var getOrCreateDocument = function(document, callback) {
-    var querySpec = {
-        query: 'SELECT * FROM root r WHERE r.id=@id',
-        parameters: [{
-            name: '@id',
-            value: document.id
-        }]
-    };
-
-    var collectionUri = "dbs/" + config.dbDefinition.id + "/colls/" + config.collDefinition.id;
-
-    client.queryDocuments(collectionUri, querySpec).toArray(function(err, results) {
-        if(err) return callback(err);
-
-        if(results.length === 0) {
-            client.createDocument(collectionUri, document, function(err, created) {
-                if(err) return callback(err);
-
-                callback(null, created);
-            });
-        } else {
-            callback(null, results[0]);
-        }
-    });
-};
-
-var queryCollection = function(documentId, callback) {
-  var querySpec = {
-      query: 'SELECT * FROM root r WHERE r.id=@id',
-      parameters: [{
-          name: '@id',
-          value: documentId
-      }]
-  };
-
-  var collectionUri = "dbs/" + config.dbDefinition.id + "/colls/" + config.collDefinition.id;
-
-  client.queryDocuments(collectionUri, querySpec).toArray(function(err, results) {
-      if(err) return callback(err);
-
-      callback(null, results);
-  });
-};
-
-// WARNING: this function will delete your database and all its children resources: collections and documents
-function cleanup(callback) {
-    client.deleteDatabase("dbs/" + config.dbDefinition.id, function(err) {
-        if(err) return callback(err);
-
-        callback(null);
+    return new Promise((resolve, reject) => {
+        client.readDatabase(databaseUrl, (err, result) => {
+            if (err) {
+                if (err.code == HttpStatusCodes.NOTFOUND) {
+                    client.createDatabase(config.database, (err, created) => {
+                        if (err) reject(err)
+                        else resolve(created);
+                    });
+                } else {
+                    reject(err);
+                }
+            } else {
+                resolve(result);
+            }
+        });
     });
 }
 
-getOrCreateDatabase(function(err, db) {
-    if(err) return console.log(err);
-    console.log('Read or created db:\n' + db.id + '\n');
+/**
+ * Get the collection by ID, or create if it doesn't exist.
+ */
+function getCollection() {
+    console.log(`Getting collection:\n${collection.id}\n`);
 
-    getOrCreateCollection(function(err, coll) {
-        if(err) return console.log(err);
-        console.log('Read or created collection:\n' + coll.id + '\n');
-
-        getOrCreateDocument(config.docsDefinitions.Andersen, function(err, doc) {
-            if(err) return console.log(err);
-            console.log('Read or created document:\n' + doc.id + '\n');
-
-            getOrCreateDocument(config.docsDefinitions.Wakefield, function(err, doc) {
-                if(err) return console.log(err);
-                console.log('Read or created document:\n' + doc.id + '\n');
-
-                queryCollection("AndersenFamily", function(err, results) {
-                    if(err) return console.log(err);
-                    console.log('Query results:\n' + JSON.stringify(results, null, '\t') + '\n');
-
-                    cleanup(function(err) {
-                        if(err) return console.log(err);
-                        console.log('Done.');
+    return new Promise((resolve, reject) => {
+        client.readCollection(collectionUrl, (err, result) => {
+            if (err) {
+                if (err.code == HttpStatusCodes.NOTFOUND) {
+                    client.createCollection(databaseUrl, config.collection, { offerThroughput: 400 }, (err, created) => {
+                        if (err) reject(err)
+                        else resolve(created);
                     });
-                });
-            });
+                } else {
+                    reject(err);
+                }
+            } else {
+                resolve(result);
+            }
         });
     });
-});
+}
+
+/**
+ * Get the document by ID, or create if it doesn't exist.
+ * @param {function} callback - The callback function on completion
+ */
+function getFamilyDocument(document) {
+    let documentUrl = `${collectionUrl}/docs/${document.id}`;
+    console.log(`Getting document:\n${document.id}\n`);
+
+    return new Promise((resolve, reject) => {
+        client.readDocument(documentUrl, { partitionKey: document.district }, (err, result) => {
+            if (err) {
+                if (err.code == HttpStatusCodes.NOTFOUND) {
+                    client.createDocument(collectionUrl, document, (err, created) => {
+                        if (err) reject(err)
+                        else resolve(created);
+                    });
+                } else {
+                    reject(err);
+                }
+            } else {
+                resolve(result);
+            }
+        });
+    });
+};
+
+/**
+ * Query the collection using SQL
+ */
+function queryCollection() {
+    console.log(`Querying collection through index:\n${config.collection.id}\n`);
+
+    return new Promise((resolve, reject) => {
+        client.queryDocuments(
+            collectionUrl,
+            'SELECT VALUE r.address.city FROM root r WHERE r.lastName = "Andersen"',
+            { enableCrossPartitionQuery: true }
+        ).toArray((err, results) => {
+            if (err) reject(err)
+            else resolve(null);
+        });
+    });
+};
+
+
+/**
+ * Cleanup the database and collection on completion
+ */
+function cleanup() {
+    console.log(`Cleaning up by deleting database ${config.database.id}`);
+
+    return new Promise((resolve, reject) => {
+        client.deleteDatabase(databaseUrl, (err) => {
+            if (err) reject(err)
+            else resolve(null);
+        });
+    });
+}
+
+/**
+ * Exit the app with a prompt
+ * @param {message} message - The message to display
+ */
+function exit(message) {
+    console.log(message);
+    console.log('Press any key to exit');
+    process.stdin.setRawMode(true);
+    process.stdin.resume();
+    process.stdin.on('data', process.exit.bind(process, 0));
+}
+
+getDatabase()
+    .then(() => getCollection())
+    .then(() => getFamilyDocument(config.documents.Andersen))
+    .then(() => getFamilyDocument(config.documents.Wakefield))
+    .then(() => queryCollection())
+    .then(() => cleanup())
+    .then(() => { exit(`Completed successfully`); })
+    .catch((error) => { exit(`Completed with error ${JSON.stringify(error)}`) });
+
