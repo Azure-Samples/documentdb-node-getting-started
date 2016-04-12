@@ -3,9 +3,10 @@
 var documentClient = require("documentdb").DocumentClient;
 var config = require("./config");
 var url = require('url');
-var HttpStatusCodes = { NOTFOUND: 404 };
 
 var client = new documentClient(config.endpoint, { "masterKey": config.authKey });
+
+var HttpStatusCodes = { NOTFOUND: 404 };
 var databaseUrl = `dbs/${config.database.id}`;
 var collectionUrl = `${databaseUrl}/colls/${config.collection.id}`;
 
@@ -38,7 +39,7 @@ function getDatabase() {
  * Get the collection by ID, or create if it doesn't exist.
  */
 function getCollection() {
-    console.log(`Getting collection:\n${collection.id}\n`);
+    console.log(`Getting collection:\n${config.collection.id}\n`);
 
     return new Promise((resolve, reject) => {
         client.readCollection(collectionUrl, (err, result) => {
@@ -88,7 +89,7 @@ function getFamilyDocument(document) {
  * Query the collection using SQL
  */
 function queryCollection() {
-    console.log(`Querying collection through index:\n${config.collection.id}\n`);
+    console.log(`Querying collection through index:\n${config.collection.id}`);
 
     return new Promise((resolve, reject) => {
         client.queryDocuments(
@@ -97,7 +98,13 @@ function queryCollection() {
             { enableCrossPartitionQuery: true }
         ).toArray((err, results) => {
             if (err) reject(err)
-            else resolve(null);
+            else {
+                for (var queryResult of results) {
+                    console.log(`\tQuery returned ${queryResult}`);
+                }
+                console.log();
+                resolve(results);
+            }
         });
     });
 };
