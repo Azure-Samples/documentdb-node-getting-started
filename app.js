@@ -121,7 +121,6 @@ function replaceFamilyDocument(document) {
         client.replaceDocument(documentUrl, document, (err, result) => {
             if (err) reject(err);
             else {
-                console.log();
                 resolve(result);
             }
         });
@@ -139,7 +138,6 @@ function deleteFamilyDocument(document) {
         client.deleteDocument(documentUrl, (err, result) => {
             if (err) reject(err);
             else {
-                console.log();
                 resolve(result);
             }
         });
