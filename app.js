@@ -4,7 +4,7 @@ var documentClient = require("documentdb").DocumentClient;
 var config = require("./config");
 var url = require('url');
 
-var client = new documentClient(config.endpoint, { "masterKey": config.authKey });
+var client = new documentClient(config.endpoint, { "masterKey": config.primaryKey });
 
 var HttpStatusCodes = { NOTFOUND: 404 };
 var databaseUrl = `dbs/${config.database.id}`;
@@ -68,7 +68,7 @@ function getFamilyDocument(document) {
     console.log(`Getting document:\n${document.id}\n`);
 
     return new Promise((resolve, reject) => {
-        client.readDocument(documentUrl, { partitionKey: document.district }, (err, result) => {
+        client.readDocument(documentUrl, (err, result) => {
             if (err) {
                 if (err.code == HttpStatusCodes.NOTFOUND) {
                     client.createDocument(collectionUrl, document, (err, created) => {
@@ -94,13 +94,13 @@ function queryCollection() {
     return new Promise((resolve, reject) => {
         client.queryDocuments(
             collectionUrl,
-            'SELECT VALUE r.address.city FROM root r WHERE r.lastName = "Andersen"',
-            { enableCrossPartitionQuery: true }
+            'SELECT VALUE r.children FROM root r WHERE r.lastName = "Andersen"'
         ).toArray((err, results) => {
             if (err) reject(err)
             else {
                 for (var queryResult of results) {
-                    console.log(`\tQuery returned ${queryResult}`);
+                    let resultString = JSON.stringify(queryResult);
+                    console.log(`\tQuery returned ${resultString}`);
                 }
                 console.log();
                 resolve(results);
@@ -108,6 +108,44 @@ function queryCollection() {
         });
     });
 };
+
+/**
+ * Replace the document by ID.
+ */
+function replaceFamilyDocument(document) {
+    let documentUrl = `${collectionUrl}/docs/${document.id}`;
+    console.log(`Replacing document:\n${document.id}\n`);
+    document.children[0].grade = 6;
+
+    return new Promise((resolve, reject) => {
+        client.replaceDocument(documentUrl, document, (err, result) => {
+            if (err) reject(err);
+            else {
+                console.log();
+                resolve(result);
+            }
+        });
+    });
+};
+
+/**
+ * Delete the document by ID.
+ */
+function deleteFamilyDocument(document) {
+    let documentUrl = `${collectionUrl}/docs/${document.id}`;
+    console.log(`Deleting document:\n${document.id}\n`);
+
+    return new Promise((resolve, reject) => {
+        client.deleteDocument(documentUrl, (err, result) => {
+            if (err) reject(err);
+            else {
+                console.log();
+                resolve(result);
+            }
+        });
+    });
+};
+
 
 
 /**
@@ -141,7 +179,9 @@ getDatabase()
     .then(() => getFamilyDocument(config.documents.Andersen))
     .then(() => getFamilyDocument(config.documents.Wakefield))
     .then(() => queryCollection())
+    .then(() => replaceFamilyDocument(config.documents.Andersen))
+    .then(() => queryCollection())
+    .then(() => deleteFamilyDocument(config.documents.Andersen))
     .then(() => cleanup())
     .then(() => { exit(`Completed successfully`); })
     .catch((error) => { exit(`Completed with error ${JSON.stringify(error)}`) });
-

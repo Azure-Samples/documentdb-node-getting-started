@@ -1,22 +1,20 @@
 var config = {}
 
-config.endpoint = "~your DocumentDB endpoint here~";
-config.authKey = "~your auth key here~";
+config.endpoint = "~your DocumentDB endpoint uri here~";
+config.primaryKey = "~your primary key here~";
 
 config.database = {
     "id": "FamilyDB"
 };
 
 config.collection = {
-    "id": "FamilyColl",
-    "partitionKey": { "paths": ["/district"], "kind": "Hash" }
+    "id": "FamilyColl"
 };
 
 config.documents = {
     "Andersen": {
         "id": "Anderson.1",
         "lastName": "Andersen",
-        "district": "WA5",
         "parents": [{
             "firstName": "Thomas"
         }, {
@@ -38,7 +36,6 @@ config.documents = {
     },
     "Wakefield": {
         "id": "Wakefield.7",
-        "district": "NY23",
         "parents": [{
             "familyName": "Wakefield",
             "firstName": "Robin"
