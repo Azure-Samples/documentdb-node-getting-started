@@ -59,3 +59,7 @@ ehthumbs.db
 
 # Folder config file
 Desktop.ini
+
+# Dependency directories
+node_modules/
+jspm_packages/

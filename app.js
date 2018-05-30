@@ -1,27 +1,27 @@
 ﻿"use strict";
 
 var documentClient = require("documentdb").DocumentClient;
+const uriFactory = require('documentdb').UriFactory;
 var config = require("./config");
-var url = require('url');
 
 var client = new documentClient(config.endpoint, { "masterKey": config.primaryKey });
 
 var HttpStatusCodes = { NOTFOUND: 404 };
-var databaseUrl = `dbs/${config.database.id}`;
-var collectionUrl = `${databaseUrl}/colls/${config.collection.id}`;
+var databaseId = config.database.id;
+var collectionId = config.collection.id;
 
 /**
  * Get the database by ID, or create if it doesn't exist.
  * @param {string} database - The database to get or create
  */
 function getDatabase() {
-    console.log(`Getting database:\n${config.database.id}\n`);
-
+    console.log(`Getting database:\n${databaseId}\n`);
+    let databaseUrl = uriFactory.createDatabaseUri(databaseId);
     return new Promise((resolve, reject) => {
         client.readDatabase(databaseUrl, (err, result) => {
             if (err) {
                 if (err.code == HttpStatusCodes.NOTFOUND) {
-                    client.createDatabase(config.database, (err, created) => {
+                    client.createDatabase({ id: databaseId }, (err, created) => {
                         if (err) reject(err)
                         else resolve(created);
                     });
@@ -39,13 +39,14 @@ function getDatabase() {
  * Get the collection by ID, or create if it doesn't exist.
  */
 function getCollection() {
-    console.log(`Getting collection:\n${config.collection.id}\n`);
-
+    console.log(`Getting collection:\n${collectionId}\n`);
+    let collectionUrl = uriFactory.createDocumentCollectionUri(databaseId, collectionId);
     return new Promise((resolve, reject) => {
         client.readCollection(collectionUrl, (err, result) => {
             if (err) {
                 if (err.code == HttpStatusCodes.NOTFOUND) {
-                    client.createCollection(databaseUrl, config.collection, { offerThroughput: 400 }, (err, created) => {
+                    let databaseUrl = uriFactory.createDatabaseUri(databaseId);
+                    client.createCollection(databaseUrl, { id: collectionId }, { offerThroughput: 400 }, (err, created) => {
                         if (err) reject(err)
                         else resolve(created);
                     });
@@ -64,13 +65,13 @@ function getCollection() {
  * @param {function} callback - The callback function on completion
  */
 function getFamilyDocument(document) {
-    let documentUrl = `${collectionUrl}/docs/${document.id}`;
     console.log(`Getting document:\n${document.id}\n`);
-
+    let documentUrl = uriFactory.createDocumentUri(databaseId, collectionId, document.id);
     return new Promise((resolve, reject) => {
         client.readDocument(documentUrl, (err, result) => {
             if (err) {
                 if (err.code == HttpStatusCodes.NOTFOUND) {
+                    let collectionUrl = uriFactory.createDocumentCollectionUri(databaseId, collectionId);
                     client.createDocument(collectionUrl, document, (err, created) => {
                         if (err) reject(err)
                         else resolve(created);
@@ -89,8 +90,8 @@ function getFamilyDocument(document) {
  * Query the collection using SQL
  */
 function queryCollection() {
-    console.log(`Querying collection through index:\n${config.collection.id}`);
-
+    console.log(`Querying collection through index:\n${collectionId}`);
+    let collectionUrl = uriFactory.createDocumentCollectionUri(databaseId, collectionId);
     return new Promise((resolve, reject) => {
         client.queryDocuments(
             collectionUrl,
@@ -113,10 +114,9 @@ function queryCollection() {
  * Replace the document by ID.
  */
 function replaceFamilyDocument(document) {
-    let documentUrl = `${collectionUrl}/docs/${document.id}`;
     console.log(`Replacing document:\n${document.id}\n`);
+    let documentUrl = uriFactory.createDocumentUri(databaseId, collectionId, document.id);
     document.children[0].grade = 6;
-
     return new Promise((resolve, reject) => {
         client.replaceDocument(documentUrl, document, (err, result) => {
             if (err) reject(err);
@@ -131,9 +131,8 @@ function replaceFamilyDocument(document) {
  * Delete the document by ID.
  */
 function deleteFamilyDocument(document) {
-    let documentUrl = `${collectionUrl}/docs/${document.id}`;
     console.log(`Deleting document:\n${document.id}\n`);
-
+    let documentUrl = uriFactory.createDocumentUri(databaseId, collectionId, document.id);
     return new Promise((resolve, reject) => {
         client.deleteDocument(documentUrl, (err, result) => {
             if (err) reject(err);
@@ -144,14 +143,12 @@ function deleteFamilyDocument(document) {
     });
 };
 
-
-
 /**
  * Cleanup the database and collection on completion
  */
 function cleanup() {
-    console.log(`Cleaning up by deleting database ${config.database.id}`);
-
+    console.log(`Cleaning up by deleting database ${databaseId}`);
+    let databaseUrl = uriFactory.createDatabaseUri(databaseId);
     return new Promise((resolve, reject) => {
         client.deleteDatabase(databaseUrl, (err) => {
             if (err) reject(err)
