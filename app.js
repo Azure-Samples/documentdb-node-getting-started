@@ -1,11 +1,20 @@
 ﻿"use strict";
 
+// import documentDB and config modules
 var documentClient = require("documentdb").DocumentClient;
 const uriFactory = require('documentdb').UriFactory;
 var config = require("./config");
 
+// Create new documentClient using the config.endpoint and config.primaryKey defined in the config module
 var client = new documentClient(config.endpoint, { "masterKey": config.primaryKey });
 
+
+/**
+ * Create a Node database
+ *
+*/
+
+// Configurations the DocumentDB client will use to connect to the database and collection
 var HttpStatusCodes = { NOTFOUND: 404 };
 var databaseId = config.database.id;
 var collectionId = config.collection.id;

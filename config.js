@@ -1,3 +1,4 @@
+// Initial configurations
 var config = {}
 
 config.endpoint = "~your DocumentDB endpoint uri here~";
@@ -7,6 +8,7 @@ config.database = {
     "id": "FamilyDB"
 };
 
+// Create database, collection, and add the documents below
 config.collection = {
     "id": "FamilyColl"
 };
@@ -68,4 +70,5 @@ config.documents = {
     }
 };
 
+// Export Config object
 module.exports = config;
